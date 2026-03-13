@@ -70,7 +70,6 @@ class PurgeHandler
         return $db->table('fc_meta')
             ->where('object_type', 'FluentCrm\App\Models\Campaign')
             ->where('key', '_fcrmsim_simulated')
-            ->pluck('object_id')
-            ->toArray();
+            ->pluck('object_id');
     }
 }

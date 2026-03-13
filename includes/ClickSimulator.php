@@ -62,18 +62,18 @@ class ClickSimulator
             ->select(['id', 'subscriber_id', 'updated_at'])
             ->get();
 
-        if ($emails->isEmpty()) {
+        if (empty($emails)) {
             return ['opens' => 0, 'clicks' => 0, 'emails' => 0];
         }
 
-        $totalAvailable = $emails->count();
+        $totalAvailable = count($emails);
 
         // Pick a random count within the range (capped by available emails)
         $targetCount = wp_rand($clickMin, $clickMax);
         $targetCount = min($targetCount, $totalAvailable);
 
         // Randomly select emails
-        $emailArray = $emails->toArray();
+        $emailArray = $emails;
         shuffle($emailArray);
         $selectedEmails = array_slice($emailArray, 0, $targetCount);
 
@@ -134,7 +134,7 @@ class ClickSimulator
                 $db->table('fc_campaign_emails')
                     ->where('id', $email->id)
                     ->update([
-                        'click_counter' => $db->raw('COALESCE(click_counter, 0) + ' . $numClicks),
+                        'click_counter' => fluentCrmDb()->raw('COALESCE(click_counter, 0) + ' . intval($numClicks)),
                     ]);
             }
         }
@@ -168,8 +168,7 @@ class ClickSimulator
         return $db->table('fc_meta')
             ->where('object_type', 'FluentCrm\App\Models\Campaign')
             ->where('key', '_fcrmsim_simulated')
-            ->pluck('object_id')
-            ->toArray();
+            ->pluck('object_id');
     }
 
     private static function randomIp()

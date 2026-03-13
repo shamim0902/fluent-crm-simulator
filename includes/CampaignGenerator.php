@@ -134,8 +134,7 @@ class CampaignGenerator
                 ->where('object_type', 'FluentCrm\App\Models\Tag')
                 ->whereIn('object_id', $tagIds)
                 ->distinct()
-                ->pluck('subscriber_id')
-                ->toArray();
+                ->pluck('subscriber_id');
 
             $subscriberIds = array_merge($subscriberIds, $tagSubscribers);
         }
@@ -146,8 +145,7 @@ class CampaignGenerator
                 ->where('object_type', 'FluentCrm\App\Models\Lists')
                 ->whereIn('object_id', $listIds)
                 ->distinct()
-                ->pluck('subscriber_id')
-                ->toArray();
+                ->pluck('subscriber_id');
 
             $subscriberIds = array_merge($subscriberIds, $listSubscribers);
         }
@@ -162,8 +160,7 @@ class CampaignGenerator
         $subscriberIds = $db->table('fc_subscribers')
             ->whereIn('id', $subscriberIds)
             ->where('status', 'subscribed')
-            ->pluck('id')
-            ->toArray();
+            ->pluck('id');
 
         // Exclude subscribers by excluded tags
         if (!empty($excludedTagIds) && !empty($subscriberIds)) {
@@ -173,8 +170,7 @@ class CampaignGenerator
                 ->whereIn('object_id', $excludedTagIds)
                 ->whereIn('subscriber_id', $subscriberIds)
                 ->distinct()
-                ->pluck('subscriber_id')
-                ->toArray();
+                ->pluck('subscriber_id');
 
             $subscriberIds = array_diff($subscriberIds, $excludedByTag);
         }
@@ -187,8 +183,7 @@ class CampaignGenerator
                 ->whereIn('object_id', $excludedListIds)
                 ->whereIn('subscriber_id', $subscriberIds)
                 ->distinct()
-                ->pluck('subscriber_id')
-                ->toArray();
+                ->pluck('subscriber_id');
 
             $subscriberIds = array_diff($subscriberIds, $excludedByList);
         }
@@ -206,11 +201,15 @@ class CampaignGenerator
         $timestamps = self::generateSpreadTimestamps(count($subscriberIds), $startDate, $endDate);
 
         // Get subscriber emails in bulk
-        $subscribers = $db->table('fc_subscribers')
+        $subscriberRows = $db->table('fc_subscribers')
             ->whereIn('id', $subscriberIds)
             ->select(['id', 'email'])
-            ->get()
-            ->keyBy('id');
+            ->get();
+
+        $subscribers = [];
+        foreach ($subscriberRows as $row) {
+            $subscribers[$row->id] = $row;
+        }
 
         $inserted = 0;
         $chunks = array_chunk($subscriberIds, 500);
@@ -218,7 +217,7 @@ class CampaignGenerator
         foreach ($chunks as $chunk) {
             $rows = [];
             foreach ($chunk as $subscriberId) {
-                $subscriber = $subscribers->get($subscriberId);
+                $subscriber = $subscribers[$subscriberId] ?? null;
                 if (!$subscriber) {
                     continue;
                 }
