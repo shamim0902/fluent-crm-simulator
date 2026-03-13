@@ -1,0 +1,51 @@
+name: Release
+
+on:
+  push:
+    branches:
+      - main
+      - master
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+
+    # Only run when commit message starts with "Release:"
+    if: startsWith(github.event.head_commit.message, 'Release:')
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Extract version from plugin header
+        id: version
+        run: |
+          VERSION=$(grep -oP "Version:\s*\K[0-9]+\.[0-9]+\.[0-9]+" fluent-crm-simulator.php)
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "Detected version: $VERSION"
+
+      - name: Build zip
+        run: |
+          mkdir -p /tmp/fluent-crm-simulator
+          rsync -a --exclude='.git' \
+                   --exclude='.github' \
+                   --exclude='.gitignore' \
+                   --exclude='composer.lock' \
+                   --exclude='.plugshipignore' \
+                   --exclude='node_modules' \
+            ./ /tmp/fluent-crm-simulator/
+          cd /tmp && zip -r fluent-crm-simulator.zip fluent-crm-simulator/
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.version.outputs.version }}
+          name: ${{ steps.version.outputs.version }}
+          body: "Release ${{ steps.version.outputs.version }}"
+          files: /tmp/fluent-crm-simulator.zip
+          generate_release_notes: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
