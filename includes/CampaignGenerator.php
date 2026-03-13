@@ -136,7 +136,7 @@ class CampaignGenerator
                 ->distinct()
                 ->pluck('subscriber_id');
 
-            $subscriberIds = array_merge($subscriberIds, $tagSubscribers);
+            $subscriberIds = array_merge($subscriberIds, self::toArray($tagSubscribers));
         }
 
         if (!empty($listIds)) {
@@ -147,7 +147,7 @@ class CampaignGenerator
                 ->distinct()
                 ->pluck('subscriber_id');
 
-            $subscriberIds = array_merge($subscriberIds, $listSubscribers);
+            $subscriberIds = array_merge($subscriberIds, self::toArray($listSubscribers));
         }
 
         $subscriberIds = array_unique($subscriberIds);
@@ -157,33 +157,39 @@ class CampaignGenerator
         }
 
         // Filter to only subscribed contacts
-        $subscriberIds = $db->table('fc_subscribers')
-            ->whereIn('id', $subscriberIds)
-            ->where('status', 'subscribed')
-            ->pluck('id');
+        $subscriberIds = self::toArray(
+            $db->table('fc_subscribers')
+                ->whereIn('id', $subscriberIds)
+                ->where('status', 'subscribed')
+                ->pluck('id')
+        );
 
         // Exclude subscribers by excluded tags
         if (!empty($excludedTagIds) && !empty($subscriberIds)) {
-            $excludedByTag = $db->table('fc_subscriber_pivot')
-                ->select('subscriber_id')
-                ->where('object_type', 'FluentCrm\App\Models\Tag')
-                ->whereIn('object_id', $excludedTagIds)
-                ->whereIn('subscriber_id', $subscriberIds)
-                ->distinct()
-                ->pluck('subscriber_id');
+            $excludedByTag = self::toArray(
+                $db->table('fc_subscriber_pivot')
+                    ->select('subscriber_id')
+                    ->where('object_type', 'FluentCrm\App\Models\Tag')
+                    ->whereIn('object_id', $excludedTagIds)
+                    ->whereIn('subscriber_id', $subscriberIds)
+                    ->distinct()
+                    ->pluck('subscriber_id')
+            );
 
             $subscriberIds = array_diff($subscriberIds, $excludedByTag);
         }
 
         // Exclude subscribers by excluded lists
         if (!empty($excludedListIds) && !empty($subscriberIds)) {
-            $excludedByList = $db->table('fc_subscriber_pivot')
-                ->select('subscriber_id')
-                ->where('object_type', 'FluentCrm\App\Models\Lists')
-                ->whereIn('object_id', $excludedListIds)
-                ->whereIn('subscriber_id', $subscriberIds)
-                ->distinct()
-                ->pluck('subscriber_id');
+            $excludedByList = self::toArray(
+                $db->table('fc_subscriber_pivot')
+                    ->select('subscriber_id')
+                    ->where('object_type', 'FluentCrm\App\Models\Lists')
+                    ->whereIn('object_id', $excludedListIds)
+                    ->whereIn('subscriber_id', $subscriberIds)
+                    ->distinct()
+                    ->pluck('subscriber_id')
+            );
 
             $subscriberIds = array_diff($subscriberIds, $excludedByList);
         }
@@ -309,5 +315,20 @@ class CampaignGenerator
         }
 
         return $urlIds;
+    }
+
+    /**
+     * Safely convert pluck() result to array.
+     * WPFluent may return either a plain array or a Collection depending on version.
+     */
+    public static function toArray($result)
+    {
+        if (is_array($result)) {
+            return $result;
+        }
+        if (is_object($result) && method_exists($result, 'toArray')) {
+            return $result->toArray();
+        }
+        return (array) $result;
     }
 }

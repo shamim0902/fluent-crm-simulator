@@ -73,7 +73,7 @@ class ClickSimulator
         $targetCount = min($targetCount, $totalAvailable);
 
         // Randomly select emails
-        $emailArray = $emails;
+        $emailArray = CampaignGenerator::toArray($emails);
         shuffle($emailArray);
         $selectedEmails = array_slice($emailArray, 0, $targetCount);
 
@@ -165,10 +165,12 @@ class ClickSimulator
         }
 
         // Get all simulated campaign IDs
-        return $db->table('fc_meta')
-            ->where('object_type', 'FluentCrm\App\Models\Campaign')
-            ->where('key', '_fcrmsim_simulated')
-            ->pluck('object_id');
+        return CampaignGenerator::toArray(
+            $db->table('fc_meta')
+                ->where('object_type', 'FluentCrm\App\Models\Campaign')
+                ->where('key', '_fcrmsim_simulated')
+                ->pluck('object_id')
+        );
     }
 
     private static function randomIp()

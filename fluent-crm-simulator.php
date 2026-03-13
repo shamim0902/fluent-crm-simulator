@@ -5,7 +5,7 @@ defined('ABSPATH') || exit('Direct access not allowed.');
 /*
 Plugin Name: FluentCRM Simulator
 Description: Automatically generates test campaigns and simulates email engagement (opens/clicks) for FluentCRM. A developer tool for testing at scale.
-Version: 1.0.0
+Version: 1.0.1
 Author: Hasanuzzaman
 Author URI: https://hasanuzzaman.com
 Plugin URI: https://github.com/shamim0902/fluent-crm-simulator
@@ -13,7 +13,7 @@ License: GPLv2 or later
 Text Domain: fluent-crm-simulator
 */
 
-define('FCRMSIM_VERSION', '1.0.0');
+define('FCRMSIM_VERSION', '1.0.1');
 define('FCRMSIM_PLUGIN_FILE', __FILE__);
 define('FCRMSIM_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('FCRMSIM_PLUGIN_URL', plugin_dir_url(__FILE__));
