@@ -24,60 +24,117 @@ Or manually:
 
 ## How to Use
 
-### 1. Open the Simulator
-
 Navigate to **Tools > FCRM Simulator** in your WordPress admin dashboard.
 
-### 2. Configure Campaign Settings
+### Quick Start — Manual Mode (Recommended)
 
-| Setting | Description |
-|---|---|
-| **Select Tags** | Choose which tags to target subscribers from. Subscribers with any selected tag will be included. |
-| **Select Lists** | Choose which lists to target subscribers from. Optional — can use tags only. |
-| **Exclude Tags** | Subscribers with these tags will be excluded from the campaign. |
-| **Exclude Lists** | Subscribers in these lists will be excluded from the campaign. |
-| **Date Range** | Start and end dates. Sent timestamps are spread across this range for realistic distribution. |
-| **Email Subject** | Subject line for the simulated campaign. |
-| **Email Body** | HTML content for the simulated email body. |
+Use this mode to generate campaigns one at a time with full control.
 
-### 3. Configure Click Simulation
+1. **Select Tags/Lists** — Click the tag/list pills to select which subscribers to target. Blue pills = included, red pills = excluded.
+2. **Set Date Range** — Choose start and end dates. Email "sent" timestamps will be randomly spread across this range for realistic distribution.
+3. **Set Click Range** — Configure how many emails (min–max) should receive simulated engagement per campaign. Default is 100–200.
+4. **Click "Generate Campaign & Simulate"** — This does everything in one step:
+   - Creates a campaign targeting the selected tags/lists
+   - Generates one `CampaignEmail` record per matching subscriber (marked as "sent")
+   - Randomly selects emails within the click range
+   - Simulates opens and clicks with tracking metrics
+5. **Repeat** as needed to generate more campaigns.
 
-| Setting | Description |
-|---|---|
-| **Click Range** | Min and max number of emails to simulate engagement on (e.g., 100–200). |
-| **Open-Only Rate (%)** | Percentage of selected emails that are opened but NOT clicked. The rest get both opens and clicks. |
-| **Campaigns per Hour** | Set to auto-generate campaigns on a schedule. Set to `0` to disable. |
+> **Note:** The status panel will show "Stopped" in manual mode. This is normal — the status indicator only reflects whether **auto-generation** is enabled, not whether you've generated campaigns manually.
 
-### 4. Generate & Simulate
+### Auto Mode — Continuous Generation
 
-- Click **Generate Campaign & Simulate** to create a campaign targeting the selected tags/lists, generate email records for matching subscribers, and simulate opens/clicks in one step
-- Click **Simulate Clicks Only** to add more engagement data to existing simulated campaigns
-- A warning banner appears across admin pages while auto-generation is active
+Use this mode to generate campaigns automatically on a schedule.
 
-### 5. Stop the Simulation
+1. **Configure all settings** as described above (tags, lists, date range, click range)
+2. **Set "Auto-generate"** to a number greater than `0` (e.g., `2` for 2 campaigns per hour)
+3. **Click "Save Settings"**
+4. The status will change to **"Running (2/hr)"** with a pulsing indicator
+5. Campaigns are generated in batches every 5 minutes (e.g., 2/hr = 1 campaign every 30 minutes)
+6. A warning banner appears across all admin pages while auto-generation is active
+7. **To stop:** Click **"Stop Simulation"** or set auto-generate to `0` and save
 
-Click **Stop Simulation** or set campaigns per hour to `0` and save. Deactivating the plugin also stops all scheduled generation.
+### Simulate Clicks Only
 
-### 6. Clean Up
+Click **"Simulate Clicks Only"** to add more engagement data (opens/clicks) to **existing** simulated campaigns without creating new ones. This is useful when you want to increase engagement metrics on campaigns you've already generated.
 
-Click **Purge All Simulated Data** to permanently delete all simulator-created campaigns, emails, and tracking metrics. Real campaigns are never affected.
+### Clean Up
+
+Click **"Purge All Simulated Data"** to permanently delete all simulator-created campaigns, their emails, and tracking metrics. **Real campaigns are never affected** — the purge only targets data marked with the simulator's internal flag.
+
+## Settings Reference
+
+### Campaign Settings
+
+| Setting | Description | Default |
+|---|---|---|
+| **Include Tags** | Subscribers with any selected tag will be targeted | None |
+| **Include Lists** | Subscribers in any selected list will be targeted | None |
+| **Exclude Tags** | Subscribers with these tags will be removed from targeting | None |
+| **Exclude Lists** | Subscribers in these lists will be removed from targeting | None |
+| **Date Range** | Start/end dates for spreading email timestamps | Last 30 days |
+| **Subject** | Email subject line for the simulated campaign | "Simulated Campaign" |
+| **Email Body** | HTML content for the simulated email body | Default placeholder |
+
+> You must select at least one tag or list. The simulator only targets contacts with `status = subscribed`.
+
+### Engagement Settings
+
+| Setting | Description | Default |
+|---|---|---|
+| **Click Range (min–max)** | Number of emails randomly selected for engagement simulation per campaign. Capped by the actual number of emails in the campaign. | 100–200 |
+| **Open-Only Rate (%)** | Of the selected emails, this percentage will be marked as **opened only** (no click). The remaining emails will receive **both opens and clicks** (1–3 random URLs each). | 70% |
+| **Auto-generate** | Number of campaigns to generate per hour. Set to `0` to disable automatic generation. | 0 (disabled) |
+
+### Example Scenarios
+
+**"I want 150 emails clicked out of my campaign"**
+- Set click range: Min `150`, Max `150`
+- Set open-only rate: `0%` (all selected emails get clicks)
+
+**"I want realistic engagement: mostly opens, some clicks"**
+- Set click range: Min `100`, Max `200`
+- Set open-only rate: `70%` (70% open-only, 30% get clicks too)
+
+**"I want to test with high volume over the last quarter"**
+- Set date range: 3 months ago to today
+- Select your target tags
+- Click "Generate Campaign & Simulate" multiple times, or set auto-generate to `5/hr`
 
 ## How It Works
 
-- Creates campaigns with status `archived` (bypasses actual email sending)
-- Generates `CampaignEmail` records for each subscriber matching tag/list criteria
-- Simulates email opens by setting `is_open=1` and inserting `CampaignUrlMetric` records with `type=open`
-- Simulates email clicks by incrementing `click_counter` and inserting `CampaignUrlMetric` records with `type=click`
-- Uses **Action Scheduler** (bundled with FluentCRM) for scheduled generation, with WP-Cron as fallback
-- All simulated campaigns are marked with `_fcrmsim_simulated` meta — the purge function targets only these
-- Subscribers are NOT created or modified — the simulator works with your existing contacts
+1. **Campaign Creation** — Creates a FluentCRM campaign with status `archived` (bypasses the normal sending pipeline — no actual emails are ever sent)
+2. **Email Records** — Generates one `fc_campaign_emails` row per matching subscriber with `status = sent`, a unique `email_hash`, and a randomized timestamp within the date range
+3. **Open Simulation** — Sets `is_open = 1` on selected campaign emails and inserts `CampaignUrlMetric` records with `type = open`
+4. **Click Simulation** — Increments `click_counter` on campaign emails and inserts `CampaignUrlMetric` records with `type = click`, referencing URLs stored in `fc_url_stores`
+5. **Scheduling** — Uses Action Scheduler (bundled with FluentCRM) for auto-generation, with WP-Cron as fallback. Runs every 5 minutes.
+6. **Data Safety** — All simulated campaigns are tagged with `_fcrmsim_simulated` in `fc_meta`. The purge function queries this marker to identify and delete only simulated data.
+
+### What Gets Created
+
+| Table | Records Created |
+|---|---|
+| `fc_campaigns` | One campaign per generation |
+| `fc_campaign_emails` | One row per subscriber in the targeted tags/lists |
+| `fc_campaign_url_metrics` | Open and click tracking records |
+| `fc_url_stores` | 5 placeholder URLs for click tracking |
+| `fc_meta` | `_fcrmsim_simulated` marker per campaign |
+
+### What Does NOT Get Modified
+
+- **Subscribers** — No contacts are created, modified, or deleted
+- **Tags/Lists** — No tag or list associations are changed
+- **Real Campaigns** — Existing campaigns are never touched
+- **Email Sending** — No emails are actually sent, no mail queue is affected
 
 ## Important Notes
 
 - Designed for **development and staging environments** — not recommended for production use
 - Simulated campaigns appear in FluentCRM analytics and reports (by design, for realistic testing)
 - No actual emails are sent — campaigns are created directly in `archived` status
+- The simulator works with **existing subscribers** — make sure you have contacts with the selected tags/lists
 - When the plugin is deactivated, all scheduled events are cleared; existing simulated data remains until purged
+- Auto-updates are supported via GitHub releases
 
 ## License
 
